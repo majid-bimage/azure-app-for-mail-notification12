@@ -30,7 +30,7 @@ app.config['server'] = "bimageforge.database.windows.net"
 app.config['database'] = "bimageforge"
 app.config['username'] = "forge"
 app.config['password'] = "BimageNow2020"
-app.config['driver'] = 'ODBC Driver 17 for SQL Server'
+app.config['driver'] = 'ODBC Driver 18 for SQL Server'
 
 
 # Initialize Flask-Mail
