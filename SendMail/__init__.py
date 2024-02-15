@@ -302,6 +302,9 @@ async def main(req: HttpRequest) -> HttpResponse:
                     mail.send(message)
                     # flash('Email sent successfully!', 'success')
                     return HttpResponse("Success")
+            else:
+                logging.info("Resource not in GFC Folder")
+                return HttpResponse("Resource not in GFC Folder...")
     except Exception as e:
         print(str(e))
         logging.info(str(e))
