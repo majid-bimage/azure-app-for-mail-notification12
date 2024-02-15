@@ -32,14 +32,7 @@ app.config['username'] = "forge"
 app.config['password'] = "BimageNow2020"
 app.config['driver'] = 'ODBC Driver 17 for SQL Server'
 
-# Create a connection string
-app.config['conn_str'] = f"DRIVER={{{app.config['driver']}}};SERVER={app.config['server']};DATABASE={app.config['database']};UID={app.config['username']};PWD={app.config['password']}"
 
-# Establish a connection
-conn = pyodbc.connect(app.config['conn_str'])
-
-# Create a cursor object
-cursor = conn.cursor()
 # Initialize Flask-Mail
 mail = Mail(app)
 @app.route('/')
@@ -206,6 +199,13 @@ async def convert_utc_to_local(utc_timestamp, target_timezone):
     return timestamp_modified
 async def create_schema_if_not_exists(schema_name):
     try:
+        # Create a connection string
+        app.config['conn_str'] = f"DRIVER={{{app.config['driver']}}};SERVER={app.config['server']};DATABASE={app.config['database']};UID={app.config['username']};PWD={app.config['password']}"
+        # Establish a connection
+        conn = pyodbc.connect(app.config['conn_str'])
+
+        # Create a cursor object
+        cursor = conn.cursor()
         # Check if the schema exists
         cursor.execute(f"SELECT schema_id FROM sys.schemas WHERE name = '{schema_name}'")
         schema_exists = cursor.fetchone()
@@ -224,6 +224,13 @@ async def create_schema_if_not_exists(schema_name):
         return False
 async def create_table_if_not_exists(schema_name, table_name):
     try:
+        # Create a connection string
+        app.config['conn_str'] = f"DRIVER={{{app.config['driver']}}};SERVER={app.config['server']};DATABASE={app.config['database']};UID={app.config['username']};PWD={app.config['password']}"
+        # Establish a connection
+        conn = pyodbc.connect(app.config['conn_str'])
+
+        # Create a cursor object
+        cursor = conn.cursor()
         # Check if the table exists
         # Assuming schema_name and table_name are variables holding the schema and table names
         query = f"""
@@ -265,6 +272,13 @@ async def create_table_if_not_exists(schema_name, table_name):
         logging.info(ex)
         return False
 async def insert_data(schema_name, table_name, hookid, urn, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath):
+    # Create a connection string
+    app.config['conn_str'] = f"DRIVER={{{app.config['driver']}}};SERVER={app.config['server']};DATABASE={app.config['database']};UID={app.config['username']};PWD={app.config['password']}"
+    # Establish a connection
+    conn = pyodbc.connect(app.config['conn_str'])
+
+    # Create a cursor object
+    cursor = conn.cursor()
     # Check if a row with the same attributes already exists
     query_check = f"""
         SELECT COUNT(*)
@@ -308,6 +322,13 @@ async def main(req: HttpRequest) -> HttpResponse:
     try:
 
         if req.method == 'POST':
+            # Create a connection string
+            app.config['conn_str'] = f"DRIVER={{{app.config['driver']}}};SERVER={app.config['server']};DATABASE={app.config['database']};UID={app.config['username']};PWD={app.config['password']}"
+            # Establish a connection
+            conn = pyodbc.connect(app.config['conn_str'])
+
+            # Create a cursor object
+            cursor = conn.cursor()
             # Process the data received in the callback
             data = req.get_json()  # Assuming the data is in JSON format
         # data = {'version': '1.0', 'resourceUrn': 'urn:adsk.wipprod:fs.file:vf.ZY4iW_eER-6e8Ee5OWnREQ?version=1', 'hook': {'hookId': '1ae09bae-7fd6-4890-b09d-ac6ebc75f036', 'tenant': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw', 'callbackUrl': 'https://7097-103-214-235-230.ngrok-free.app/send_email', 'createdBy': 'Ak5xhjoOVN80nIGnGXBgWtWf1LS6GbWA', 'event': 'dm.version.added', 'createdDate': '2024-02-01T10:13:56.605+00:00', 'lastUpdatedDate': '2024-02-01T10:13:56.605+00:00', 'system': 'data', 'creatorType': 'Application', 'status': 'active', 'scope': {'folder': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw'}, 'autoReactivateHook': False, 'urn': 'urn:adsk.webhooks:events.hook:1ae09bae-7fd6-4890-b09d-ac6ebc75f036', 'callbackWithEventPayloadOnly': False, '__self__': '/systems/data/events/dm.version.added/hooks/1ae09bae-7fd6-4890-b09d-ac6ebc75f036'}, 'payload': {'ext': 'pdf', 'modifiedTime': '2024-02-01T10:15:03+0000', 'creator': 'F4R27ZLHJ3DMFDD6', 'lineageUrn': 'urn:adsk.wipprod:dm.lineage:ZY4iW_eER-6e8Ee5OWnREQ', 'sizeInBytes': 44263, 'hidden': False, 'indexable': True, 'source': 'urn:adsk.wipprod:fs.file:vf.ZY4iW_eER-6e8Ee5OWnREQ?version=1', 'version': '1', 'user_info': {'id': 'F4R27ZLHJ3DMFDD6'}, 'name': '120. AMS VS AMS.pdf', 'context': {'lineage': {'reserved': False, 'reservedUserName': None, 'reservedUserId': None, 'reservedTime': None, 'unreservedUserName': None, 'unreservedUserId': None, 'unreservedTime': None, 'createUserId': 'F4R27ZLHJ3DMFDD6', 'createTime': '2024-02-01T10:15:03+0000', 'createUserName': 'Majid N', 'lastModifiedUserId': 'F4R27ZLHJ3DMFDD6', 'lastModifiedTime': '2024-02-01T10:15:03+0000', 'lastModifiedUserName': 'Majid N'}, 'operation': 'PostVersionedFiles'}, 'createdTime': '2024-02-01T10:15:03+0000', 'modifiedBy': 'F4R27ZLHJ3DMFDD6', 'state': 'CONTENT_AVAILABLE', 'parentFolderUrn': 'urn:adsk.wipprod:fs.folder:co.kVQof2GfSGKsqf9QMDMbmw', 'ancestors': [{'name': '9a1a9f2f-235e-4dc9-b961-29f202ea15ca-account-root-folder', 'urn': 'urn:adsk.wipprod:fs.folder:co.8DhXKk-fTCuOB7lro19mDw'}, {'name': 'ace3d80e-a6e9-4707-8809-7a9d0b065e45-root-folder', 'urn': 'urn:adsk.wipprod:fs.folder:co.Bo2foW1bRzSQ-5Lu9yrWjw'}, {'name': 'Project Files', 'urn': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw'}, {'name': 'Test03', 'urn': 'urn:adsk.wipprod:fs.folder:co.kVQof2GfSGKsqf9QMDMbmw'}], 'project': 'ace3d80e-a6e9-4707-8809-7a9d0b065e45', 'tenant': '9a1a9f2f-235e-4dc9-b961-29f202ea15ca', 'custom-metadata': {'storm:process-state': 'NEEDS_PROCESSING', 'dm_sys_id': 'e59abf0d-3ba6-4dca-b393-b96e363ddc77', 'file_name': '120. AMS VS AMS.pdf', 'lineageTitle': '', 'dm_command:id': '8cf2e641-7884-415c-9c5f-88835c8decc8', 'forge.type': 'versions:autodesk.bim360:File-1.0', 'storm:entity-type': 'SEED_FILE', 'fileName': '120. AMS VS AMS.pdf'}}}
