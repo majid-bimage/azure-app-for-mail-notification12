@@ -16,5 +16,9 @@
       "direction": "out",
       "name": "$return"
     }
-  ]
+  ],
+  "disabled": false,
+  "entryPoint": "main",
+  "language": "python",
+  "packageDirectory": ".python_packages/lib/site-packages"
 }
