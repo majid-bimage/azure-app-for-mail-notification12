@@ -414,7 +414,7 @@ async def main(req: HttpRequest) -> HttpResponse:
                     with app.app_context():
                         message = Message(subject=subject, recipients=recipient, html=email_body)
                         # Send the email
-                        # mail.send(message)
+                        mail.send(message)
                         # flash('Email sent successfully!', 'success')
                         return HttpResponse("Success")
                 else:
