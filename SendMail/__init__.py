@@ -9,6 +9,7 @@ from datetime import datetime
 import pytz
 from tzlocal import get_localzone
 from datetime import datetime
+import pyodbc
 app = Flask(__name__)
 
 # Configure logging
@@ -24,6 +25,21 @@ app.config['MAIL_USERNAME'] = 'acc.support@bimageconsulting.in'
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = 'acc.support@bimageconsulting.in'
 
+# Define your database connection parameters
+app.config['server'] = "bimageforge.database.windows.net"
+app.config['database'] = "bimageforge"
+app.config['username'] = "forge"
+app.config['password'] = "BimageNow2020"
+app.config['driver'] = 'SQL Server'
+
+# Create a connection string
+app.config['conn_str'] = f"DRIVER={{{app.config['driver']}}};SERVER={app.config['server']};DATABASE={app.config['database']};UID={app.config['username']};PWD={app.config['password']}"
+
+# Establish a connection
+conn = pyodbc.connect(app.config['conn_str'])
+
+# Create a cursor object
+cursor = conn.cursor()
 # Initialize Flask-Mail
 mail = Mail(app)
 @app.route('/')
@@ -188,7 +204,96 @@ async def convert_utc_to_local(utc_timestamp, target_timezone):
     local_timestamp = local_datetime.strftime('%Y-%m-%dT%H:%M:%S%z')
     timestamp_modified = local_timestamp.replace('T', ' ').replace('+', ' +')
     return timestamp_modified
+async def create_schema_if_not_exists(schema_name):
+    try:
+        # Check if the schema exists
+        cursor.execute(f"SELECT schema_id FROM sys.schemas WHERE name = '{schema_name}'")
+        schema_exists = cursor.fetchone()
 
+        if not schema_exists:
+            # Create the schema if it doesn't exist
+            cursor.execute(f"CREATE SCHEMA {schema_name}")
+            logging.info("Schema created")
+            conn.commit()
+            return True
+        else:
+            logging.info("Schema Exists")
+            return True
+    except Exception as ex:
+        logging.info(ex)
+        return False
+async def create_table_if_not_exists(schema_name, table_name):
+    try:
+        # Check if the table exists
+        # Assuming schema_name and table_name are variables holding the schema and table names
+        query = f"""
+            SELECT *
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = '{schema_name}' AND TABLE_NAME = '{table_name}'
+        """
+
+        cursor.execute(query)
+        table_exists = cursor.fetchone()
+
+
+        if not table_exists:
+            # Create the table if it doesn't exist
+            cursor.execute(f"""
+                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{schema_name}.{table_name}')
+                    BEGIN
+                        CREATE TABLE {schema_name}.{table_name} (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            hookid VARCHAR(255) NOT NULL,
+                            urn VARCHAR(255) NOT NULL,
+                            lastmodifiedtime VARCHAR(255),
+                            lastmodifieduser VARCHAR(255),
+                            filename VARCHAR(255),
+                            projectname VARCHAR(255),
+                            projectpath VARCHAR(255),
+                            lastupdatedtime VARCHAR(255),
+                            CONSTRAINT unique_urn UNIQUE (urn)
+                        );
+                    END;
+                    """)
+            logging.info("table created")
+            conn.commit()
+            return True
+        else:
+            logging.info("Table already exists")
+            return True
+    except Exception as ex:
+        logging.info(ex)
+        return False
+async def insert_data(schema_name, table_name, hookid, urn, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath):
+    # Check if a row with the same attributes already exists
+    query_check = f"""
+        SELECT COUNT(*)
+        FROM {schema_name}.{table_name}
+        WHERE urn = ? AND lastmodifiedtime = ? AND lastmodifieduser = ? AND filename = ?
+    """
+    cursor.execute(query_check, (urn, lastmodifiedtime, lastmodifieduser, filename))
+    row_count = cursor.fetchone()[0]
+    if row_count == 0:
+        # Insert the new row
+        query = f"""
+            INSERT INTO {schema_name}.{table_name} (hookid, urn, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath, lastupdatedtime)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        # Assuming lastupdatedtime is the current datetime
+        current_datetime = datetime.now()
+
+        # Execute the insert query with parameters
+        cursor.execute(query, (hookid, urn, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath, current_datetime))
+        conn.commit()
+
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+        return True
+    else:
+        logging.info("Row with the same attributes already exists. Not inserting.")
+        return False
 async def main(req: HttpRequest) -> HttpResponse:
     logging.info("function begin")
     # target_timezone = "Asia/Kolkata"
@@ -207,7 +312,7 @@ async def main(req: HttpRequest) -> HttpResponse:
             data = req.get_json()  # Assuming the data is in JSON format
         # data = {'version': '1.0', 'resourceUrn': 'urn:adsk.wipprod:fs.file:vf.ZY4iW_eER-6e8Ee5OWnREQ?version=1', 'hook': {'hookId': '1ae09bae-7fd6-4890-b09d-ac6ebc75f036', 'tenant': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw', 'callbackUrl': 'https://7097-103-214-235-230.ngrok-free.app/send_email', 'createdBy': 'Ak5xhjoOVN80nIGnGXBgWtWf1LS6GbWA', 'event': 'dm.version.added', 'createdDate': '2024-02-01T10:13:56.605+00:00', 'lastUpdatedDate': '2024-02-01T10:13:56.605+00:00', 'system': 'data', 'creatorType': 'Application', 'status': 'active', 'scope': {'folder': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw'}, 'autoReactivateHook': False, 'urn': 'urn:adsk.webhooks:events.hook:1ae09bae-7fd6-4890-b09d-ac6ebc75f036', 'callbackWithEventPayloadOnly': False, '__self__': '/systems/data/events/dm.version.added/hooks/1ae09bae-7fd6-4890-b09d-ac6ebc75f036'}, 'payload': {'ext': 'pdf', 'modifiedTime': '2024-02-01T10:15:03+0000', 'creator': 'F4R27ZLHJ3DMFDD6', 'lineageUrn': 'urn:adsk.wipprod:dm.lineage:ZY4iW_eER-6e8Ee5OWnREQ', 'sizeInBytes': 44263, 'hidden': False, 'indexable': True, 'source': 'urn:adsk.wipprod:fs.file:vf.ZY4iW_eER-6e8Ee5OWnREQ?version=1', 'version': '1', 'user_info': {'id': 'F4R27ZLHJ3DMFDD6'}, 'name': '120. AMS VS AMS.pdf', 'context': {'lineage': {'reserved': False, 'reservedUserName': None, 'reservedUserId': None, 'reservedTime': None, 'unreservedUserName': None, 'unreservedUserId': None, 'unreservedTime': None, 'createUserId': 'F4R27ZLHJ3DMFDD6', 'createTime': '2024-02-01T10:15:03+0000', 'createUserName': 'Majid N', 'lastModifiedUserId': 'F4R27ZLHJ3DMFDD6', 'lastModifiedTime': '2024-02-01T10:15:03+0000', 'lastModifiedUserName': 'Majid N'}, 'operation': 'PostVersionedFiles'}, 'createdTime': '2024-02-01T10:15:03+0000', 'modifiedBy': 'F4R27ZLHJ3DMFDD6', 'state': 'CONTENT_AVAILABLE', 'parentFolderUrn': 'urn:adsk.wipprod:fs.folder:co.kVQof2GfSGKsqf9QMDMbmw', 'ancestors': [{'name': '9a1a9f2f-235e-4dc9-b961-29f202ea15ca-account-root-folder', 'urn': 'urn:adsk.wipprod:fs.folder:co.8DhXKk-fTCuOB7lro19mDw'}, {'name': 'ace3d80e-a6e9-4707-8809-7a9d0b065e45-root-folder', 'urn': 'urn:adsk.wipprod:fs.folder:co.Bo2foW1bRzSQ-5Lu9yrWjw'}, {'name': 'Project Files', 'urn': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw'}, {'name': 'Test03', 'urn': 'urn:adsk.wipprod:fs.folder:co.kVQof2GfSGKsqf9QMDMbmw'}], 'project': 'ace3d80e-a6e9-4707-8809-7a9d0b065e45', 'tenant': '9a1a9f2f-235e-4dc9-b961-29f202ea15ca', 'custom-metadata': {'storm:process-state': 'NEEDS_PROCESSING', 'dm_sys_id': 'e59abf0d-3ba6-4dca-b393-b96e363ddc77', 'file_name': '120. AMS VS AMS.pdf', 'lineageTitle': '', 'dm_command:id': '8cf2e641-7884-415c-9c5f-88835c8decc8', 'forge.type': 'versions:autodesk.bim360:File-1.0', 'storm:entity-type': 'SEED_FILE', 'fileName': '120. AMS VS AMS.pdf'}}}
         # Extracting relevant information
-            logging.info(data)
+            # logging.info(data)
             creator_username = data['payload']['context']['lineage']['lastModifiedUserName']  # Use 'lastModifiedUserName' for creator
             created_time = data['payload']['createdTime']
             
@@ -224,7 +329,7 @@ async def main(req: HttpRequest) -> HttpResponse:
             folder_path = '/'.join(folder['name'] for folder in ancestors if 'root-folder' not in folder['name'])
             folder_path = project_name +'/'+ folder_path
             lastModifiedTime = data['payload']['context']['lineage']['lastModifiedTime']
-
+            lastModifiedUserName = data['payload']['context']['lineage']['lastModifiedUserName']
             local_timestamp = await convert_utc_to_local(lastModifiedTime, target_timezone)
             lastModifiedTime = lastModifiedTime.replace('T', ' ').replace('+', ' +')
 
@@ -232,6 +337,7 @@ async def main(req: HttpRequest) -> HttpResponse:
             file_name = data['payload']['name']
             file_version = data['payload']['version']
             file_size = data['payload']['sizeInBytes']
+            hook_id = data['hook']['hookId']
 
             # Example: Send an email with the extracted information
             email_body = f"""
@@ -292,16 +398,27 @@ async def main(req: HttpRequest) -> HttpResponse:
             </html>
             """
             if gfc_found != False:
-                recipient = await index(project, hubid)
+                existence= False
+                table = False
+                schema = False
+                schema = await create_schema_if_not_exists('hooksmail')
+                if schema:
+                    table = await create_table_if_not_exists('hooksmail', 'hooksentry')
+                if table:
+                    existence = await insert_data('hooksmail', 'hooksentry',hook_id, item_id, lastModifiedTime, lastModifiedUserName, file_name, project_name, folder_path)
+                if existence:
+                    recipient = await index(project, hubid)
 
-                # return 'Callback received. Nothing to process.'
-                # Create a message object
-                with app.app_context():
-                    message = Message(subject=subject, recipients=recipient, html=email_body)
-                    # Send the email
-                    mail.send(message)
-                    # flash('Email sent successfully!', 'success')
-                    return HttpResponse("Success")
+                    # return 'Callback received. Nothing to process.'
+                    # Create a message object
+                    with app.app_context():
+                        message = Message(subject=subject, recipients=recipient, html=email_body)
+                        # Send the email
+                        # mail.send(message)
+                        # flash('Email sent successfully!', 'success')
+                        return HttpResponse("Success")
+                else:
+                    return HttpResponse("Already passed hook")
             else:
                 logging.info("Resource not in GFC Folder")
                 return HttpResponse("Resource not in GFC Folder...")
@@ -313,3 +430,4 @@ async def main(req: HttpRequest) -> HttpResponse:
 
     # return redirect(url_for('index'))
     
+                

@@ -9,3 +9,4 @@ flask
 flask_mail
 pytz
 tzlocal
+pyodbc
