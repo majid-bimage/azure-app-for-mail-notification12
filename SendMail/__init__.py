@@ -37,6 +37,9 @@ app.config['driver'] = 'ODBC Driver 18 for SQL Server'
 mail = Mail(app)
 @app.route('/')
 async def index(projectid, hubid):
+    logging.info(f"project id : {projectid}")
+    logging.info(f"hubid id : {hubid}")
+
     # Call the function
     role_id= None
     users = None
@@ -439,13 +442,19 @@ async def main(req: HttpRequest) -> HttpResponse:
                     # return 'Callback received. Nothing to process.'
                     # Create a message object
                     with app.app_context():
-                        message = Message(subject=subject, recipients=recipient, html=email_body)
-                        # Send the email
-                        mail.send(message)
+                        try:
+                            message = Message(subject=subject, recipients=recipient, html=email_body)
+                            # Send the email
+                            mail.send(message)
+                        except Exception as ex:
+                            logging.info(ex)
+                        try:
 
-                        message1 = Message(subject=subject, recipients=recipient_acc, html=email_body)
-                        # Send the email
-                        mail.send(message1)
+                            message1 = Message(subject=subject, recipients=recipient_acc, html=email_body)
+                            # Send the email
+                            mail.send(message1)
+                        except Exception as ex:
+                            logging.info(ex)
                         # flash('Email sent successfully!', 'success')
                         return HttpResponse("Success")
                 else:
