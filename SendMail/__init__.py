@@ -57,9 +57,30 @@ async def index(projectid, hubid):
             print(str(e))
     if role_id:
         users = get_users(projectid, role_id, token)
+    else:
+        users_roles = get_acc_roles(projectid, token)
+        for user in users_roles:
+            for role in user['roles']:
+                if role['name'] == "Receive_Emails_GFC":
+                    role_id = role['id']
+                    break
+        if role_id:
+            users = get_users(projectid, role_id, token)
 
 
     return users
+async def get_acc_roles(project_id,token):
+    url = f'https://developer.api.autodesk.com/construction/admin/v1/projects/{project_id}/users'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer '+token
+    }
+
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()['results']
+    else:
+        return f"Error: {response.status_code}, {response.text}"
 
 async def get_2legged_token():
     try:
