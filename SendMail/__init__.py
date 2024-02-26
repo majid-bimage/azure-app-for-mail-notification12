@@ -46,7 +46,7 @@ async def index(projectid, hubid):
     # hubid = "9a1a9f2f-235e-4dc9-b961-29f202ea15ca"
     # projectid = "bde8bed9-f5d5-48c7-ac2f-8804f7e58a2b"
     token = await get_2legged_token()
-    roles = await get_project_roles(hubid, projectid, token)
+    roles =  get_project_roles(hubid, projectid, token)
     for x in roles:
         try:
             if x['name'] == "Receive_Emails_GFC":
@@ -58,10 +58,9 @@ async def index(projectid, hubid):
     if role_id:
         users = get_users(projectid, role_id, token)
     else:
-        users_roles = await get_acc_roles(projectid, token)
-        logging.info(users_roles)
-        for user in users_roles:
-            logging.info(user)
+        logging.info("no roles found in bim360")
+        users_roles =  await get_acc_roles(projectid, token)
+        for user in users_roles['results']:
 
             for role in user['roles']:
                 logging.info(role)
@@ -83,7 +82,7 @@ async def get_acc_roles(project_id,token):
 
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
-        return response.json()['results']
+        return response.json()
     else:
         return f"Error: {response.status_code}, {response.text}"
 
@@ -345,8 +344,8 @@ async def main(req: HttpRequest) -> HttpResponse:
     # target_timezone = "Asia/Kolkata"
     target_timezone = get_localzone()
     logging.info(target_timezone)
-
-    recipient_acc = ["avis@bimageconsulting.in","majid.n@bimageconsulting.in"]
+# "avis@bimageconsulting.in",
+    recipient_acc = ["majid.n@bimageconsulting.in"]
     # avis@bimageconsulting.in
     subject = "Bim Folder Notification"
     message_body = "test message body - Hi this is test mail sent on 01/02/2024 13:59"
