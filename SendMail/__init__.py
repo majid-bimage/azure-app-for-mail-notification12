@@ -46,7 +46,7 @@ async def index(projectid, hubid):
     # hubid = "9a1a9f2f-235e-4dc9-b961-29f202ea15ca"
     # projectid = "bde8bed9-f5d5-48c7-ac2f-8804f7e58a2b"
     token = await get_2legged_token()
-    roles = get_project_roles(hubid, projectid, token)
+    roles = await get_project_roles(hubid, projectid, token)
     for x in roles:
         try:
             if x['name'] == "Receive_Emails_GFC":
@@ -58,9 +58,14 @@ async def index(projectid, hubid):
     if role_id:
         users = get_users(projectid, role_id, token)
     else:
-        users_roles = get_acc_roles(projectid, token)
+        users_roles = await get_acc_roles(projectid, token)
+        logging.info(users_roles)
         for user in users_roles:
+            logging.info(user)
+
             for role in user['roles']:
+                logging.info(role)
+
                 if role['name'] == "Receive_Emails_GFC":
                     role_id = role['id']
                     break
