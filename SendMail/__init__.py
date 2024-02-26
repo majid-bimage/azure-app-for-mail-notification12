@@ -282,7 +282,6 @@ async def create_table_if_not_exists(schema_name, table_name):
                             projectname VARCHAR(255),
                             projectpath VARCHAR(255),
                             lastupdatedtime VARCHAR(255),
-                            CONSTRAINT unique_urn UNIQUE (urn)
                         );
                     END;
                     """)
