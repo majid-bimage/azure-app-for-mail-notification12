@@ -46,7 +46,7 @@ async def index(projectid, hubid):
     roles = get_project_roles(hubid, projectid, token)
     for x in roles:
         try:
-            if x['name'] == "Receive_Emails":
+            if x['name'] == "Receive_Emails_GFC":
                 print(x['name'] +": "+ x['id'])
                 role_id = x['id']
                 break
@@ -264,8 +264,12 @@ async def create_table_if_not_exists(schema_name, table_name):
                     """)
             logging.info("table created")
             conn.commit()
+            cursor.close()
+            conn.close()
             return True
         else:
+            cursor.close()
+            conn.close()
             logging.info("Table already exists")
             return True
     except Exception as ex:
@@ -314,7 +318,7 @@ async def main(req: HttpRequest) -> HttpResponse:
     target_timezone = get_localzone()
     logging.info(target_timezone)
 
-    recipient = ["avis@bimageconsulting.in","majid.n@bimageconsulting.in"]
+    recipient_acc = ["avis@bimageconsulting.in","majid.n@bimageconsulting.in"]
     # avis@bimageconsulting.in
     subject = "Bim Folder Notification"
     message_body = "test message body - Hi this is test mail sent on 01/02/2024 13:59"
@@ -429,6 +433,7 @@ async def main(req: HttpRequest) -> HttpResponse:
                     existence = await insert_data('hooksmail', 'hooksentry',hook_id, item_id, lastModifiedTime, lastModifiedUserName, file_name, project_name, folder_path)
                 if existence:
                     recipient = await index(project, hubid)
+                    
 
                     # return 'Callback received. Nothing to process.'
                     # Create a message object
@@ -436,6 +441,10 @@ async def main(req: HttpRequest) -> HttpResponse:
                         message = Message(subject=subject, recipients=recipient, html=email_body)
                         # Send the email
                         mail.send(message)
+
+                        message1 = Message(subject=subject, recipients=recipient_acc, html=email_body)
+                        # Send the email
+                        mail.send(message1)
                         # flash('Email sent successfully!', 'success')
                         return HttpResponse("Success")
                 else:
