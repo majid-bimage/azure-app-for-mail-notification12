@@ -433,6 +433,7 @@ async def main(req: HttpRequest) -> HttpResponse:
                     existence = await insert_data('hooksmail', 'hooksentry',hook_id, item_id, lastModifiedTime, lastModifiedUserName, file_name, project_name, folder_path)
                 if existence:
                     recipient = await index(project, hubid)
+                    logging.info(recipient)
                     
 
                     # return 'Callback received. Nothing to process.'
