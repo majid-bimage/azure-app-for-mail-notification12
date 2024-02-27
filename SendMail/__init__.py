@@ -38,9 +38,6 @@ mail = Mail(app)
 @app.route('/')
 async def index(projectid, hubid):
     try:
-        logging.info(f"project id : {projectid}")
-        logging.info(f"hubid id : {hubid}")
-
         # Call the function
         role_id= None
         users = None
@@ -48,7 +45,6 @@ async def index(projectid, hubid):
         # projectid = "bde8bed9-f5d5-48c7-ac2f-8804f7e58a2b"
         token = await get_2legged_token()
         roles =  get_project_roles(hubid, projectid, token)
-        logging.info(roles)
         for x in roles:
             try:
                 if x['name'] == "Receive_Emails_GFC":
