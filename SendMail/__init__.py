@@ -37,59 +37,69 @@ app.config['driver'] = 'ODBC Driver 18 for SQL Server'
 mail = Mail(app)
 @app.route('/')
 async def index(projectid, hubid):
-    logging.info(f"project id : {projectid}")
-    logging.info(f"hubid id : {hubid}")
+    try:
+        logging.info(f"project id : {projectid}")
+        logging.info(f"hubid id : {hubid}")
 
-    # Call the function
-    role_id= None
-    users = None
-    # hubid = "9a1a9f2f-235e-4dc9-b961-29f202ea15ca"
-    # projectid = "bde8bed9-f5d5-48c7-ac2f-8804f7e58a2b"
-    token = await get_2legged_token()
-    roles =  get_project_roles(hubid, projectid, token)
-    for x in roles:
-        try:
-            if x['name'] == "Receive_Emails_GFC":
-                print(x['name'] +": "+ x['id'])
-                role_id = x['id']
-                break
-        except Exception as e:
-            print(str(e))
-    if role_id:
-        users = get_users(projectid, role_id, token)
-    else:
-        logging.info("no roles found in bim360")
-        users_roles =  await get_acc_roles(projectid, token)
-        for user in users_roles['results']:
-
-            for role in user['roles']:
-                logging.info(role)
-
-                if role['name'] == "Receive_Emails_GFC":
-                    role_id = role['id']
+        # Call the function
+        role_id= None
+        users = None
+        # hubid = "9a1a9f2f-235e-4dc9-b961-29f202ea15ca"
+        # projectid = "bde8bed9-f5d5-48c7-ac2f-8804f7e58a2b"
+        token = await get_2legged_token()
+        roles =  get_project_roles(hubid, projectid, token)
+        logging.info(roles)
+        for x in roles:
+            try:
+                if x['name'] == "Receive_Emails_GFC":
+                    role_id = x['id']
                     break
+            except Exception as e:
+                print(str(e))
         if role_id:
             users = get_users(projectid, role_id, token)
+        else:
+            logging.info("no roles found in bim360")
+            users_roles =  await get_acc_roles(projectid, token)
+            logging.info(users_roles)
+            for user in users_roles['results']:
+
+                for role in user['roles']:
+                    logging.info(role)
+
+                    if role['name'] == "Receive_Emails_GFC":
+                        role_id = role['id']
+                        break
+            if role_id:
+                users = get_users(projectid, role_id, token)
 
 
-    return users
+        return users
+    except Exception as ex:
+        logging.info(f"error in index {ex}")
 async def get_acc_roles(project_id,token):
-    url = f'https://developer.api.autodesk.com/construction/admin/v1/projects/{project_id}/users'
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer '+token
-    }
+    try:
 
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return f"Error: {response.status_code}, {response.text}"
+        url = f'https://developer.api.autodesk.com/construction/admin/v1/projects/{project_id}/users'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer '+token
+        }
+
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return f"Error: {response.status_code}, {response.text}"
+    except Exception as ex:
+        logging.info(f" error in get_acc_roles{ex}")
 
 async def get_2legged_token():
     try:
-        client_id = os.environ.get('FORGE_CLIENT_ID')
-        client_secret = os.environ.get('FORGE_CLIENT_SECRET')
+        # client_id = os.environ.get('FORGE_CLIENT_ID')
+        client_id ="JDukdMmlENZvvwJC77vOwVpvcimJtmcM"
+        # client_secret = os.environ.get('FORGE_CLIENT_SECRET')
+        client_secret = "NtPIlepu7bnriQgk"
         combined_string = f"{client_id}:{client_secret}"
 
         base64_encoded = base64.b64encode(combined_string.encode('utf-8')).decode('utf-8')
@@ -122,109 +132,129 @@ async def get_2legged_token():
         return None
 
 def get_project_roles(hubid, projectid, token):
+    try:
+        logging.info(f"{hubid} - {projectid} - { token}")
+        url = 'https://developer.api.autodesk.com/hq/v2/accounts/'+hubid+'/projects/'+projectid+'/industry_roles'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer '+token
+        }
 
-    url = 'https://developer.api.autodesk.com/hq/v2/accounts/'+hubid+'/projects/'+projectid+'/industry_roles'
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer '+token
-    }
-
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return f"Error: {response.status_code}, {response.text}"
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return f"Error: {response.status_code}, {response.text}"
+    except Exception as ex:
+        logging.info(f" error in get_project_roles{ex}")
 
 
 def get_users(projectId,role_id,token):
-    # url = 'https://developer.api.autodesk.com/bim360/admin/v1/projects/'+projectId+'/users'
-    url = f'https://developer.api.autodesk.com/construction/admin/v1/projects/{projectId}/users'
-    headers = {
-        'Authorization': 'Bearer '+token
-    }
-    
-    params = {
-        'filter[roleId]' : role_id,
-        'limit': 200
-    }
-    thislist = []
-    response = requests.get(url, headers=headers ,params=params)
-    if response.status_code == 200:
-        results= response.json()
-        for x in results['results'] :
-            thislist.append(x['email'])
-        return thislist
-    else:
-        return f"Error: {response.status_code}, {response.text}"
+    try: 
+        # url = 'https://developer.api.autodesk.com/bim360/admin/v1/projects/'+projectId+'/users'
+        url = f'https://developer.api.autodesk.com/construction/admin/v1/projects/{projectId}/users'
+        headers = {
+            'Authorization': 'Bearer '+token
+        }
+        
+        params = {
+            'filter[roleId]' : role_id,
+            'limit': 200
+        }
+        thislist = []
+        response = requests.get(url, headers=headers ,params=params)
+        if response.status_code == 200:
+            results= response.json()
+            for x in results['results'] :
+                thislist.append(x['email'])
+            return thislist
+        else:
+            return f"Error: {response.status_code}, {response.text}"
+    except Exception as ex:
+        logging.info(f" error in get_users{ex}")
 
 async def check_for_gfc(ancestors):
-    # Initialize the flag to False
-    gfc_found = False
-    
-    # Iterate through each ancestor in the list
-    for ancestor in ancestors:
-        # Check if 'GFC' is in the name of the current ancestor
-        if 'GFC' in ancestor['name']:
-            # Set the flag to True if 'GFC' is found
-            gfc_found = True
-            break  # Exit the loop since we found 'GFC'
-    
-    return gfc_found
+    try:
+        # Initialize the flag to False
+        gfc_found = False
+        
+        # Iterate through each ancestor in the list
+        for ancestor in ancestors:
+            # Check if 'GFC' is in the name of the current ancestor
+            if 'GFC' in ancestor['name']:
+                # Set the flag to True if 'GFC' is found
+                gfc_found = True
+                break  # Exit the loop since we found 'GFC'
+        
+        return gfc_found
 
+    except Exception as ex:
+        logging.info(f" error in check_for_gfc{ex}")
 
 async def get_project_info(hub_id, project_id):
-    print("get_project_info fn begin")
-    url = f'https://developer.api.autodesk.com/project/v1/hubs/b.{str(hub_id)}/projects/b.{str(project_id)}'
-    bearer_token = await get_2legged_token()
-
-    headers = {
-        'Authorization': 'Bearer '+bearer_token
-    }
     try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise an HTTPError for bad responses
 
-        # Assuming the response is in JSON format
-        project_info = response.json()
+        print("get_project_info fn begin")
+        url = f'https://developer.api.autodesk.com/project/v1/hubs/b.{str(hub_id)}/projects/b.{str(project_id)}'
+        bearer_token = await get_2legged_token()
 
-        project_name = project_info['data']['attributes']['name']
-        print(project_name)
-        return project_name
-    except requests.exceptions.RequestException as e:
-        print(f"Error during API request: {e}")
-        return str(e)
+        headers = {
+            'Authorization': 'Bearer '+bearer_token
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  # Raise an HTTPError for bad responses
+
+            # Assuming the response is in JSON format
+            project_info = response.json()
+
+            project_name = project_info['data']['attributes']['name']
+            print(project_name)
+            return project_name
+        except requests.exceptions.RequestException as e:
+            print(f"Error during API request: {e}")
+            return str(e)
+    except Exception as ex:
+        logging.info(f" error in get_project_info{ex}")
     
 async def get_webview_link(project_id, item_id):
-    url= f'https://developer.api.autodesk.com/data/v1/projects/b.{project_id}/items/{item_id}'
-    bearer_token = await get_2legged_token()
-    headers = {
-        'Authorization': 'Bearer '+bearer_token
-    }
     try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise an HTTPError for bad responses
-        item_info = response.json()
-        weblink = item_info['data']['links']['webView']['href']
-        logging.info(weblink)
-        return weblink
-    except requests.exceptions.RequestException as e:
-        print(f"Error during API request: {e}")
-        logging.error(e)
-        return str(e)
+            
+        url= f'https://developer.api.autodesk.com/data/v1/projects/b.{project_id}/items/{item_id}'
+        bearer_token = await get_2legged_token()
+        headers = {
+            'Authorization': 'Bearer '+bearer_token
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  # Raise an HTTPError for bad responses
+            item_info = response.json()
+            weblink = item_info['data']['links']['webView']['href']
+            logging.info(weblink)
+            return weblink
+        except requests.exceptions.RequestException as e:
+            print(f"Error during API request: {e}")
+            logging.error(e)
+            return str(e)
+    except Exception as ex:
+        logging.info(f" error in get_webview_link{ex}")
 async def convert_utc_to_local(utc_timestamp, target_timezone):
-    # Parse the UTC timestamp string to a datetime object
-    utc_datetime = datetime.strptime(utc_timestamp, '%Y-%m-%dT%H:%M:%S%z')
+    try:
+        # Parse the UTC timestamp string to a datetime object
+        utc_datetime = datetime.strptime(utc_timestamp, '%Y-%m-%dT%H:%M:%S%z')
 
-    # Define the target timezone
-    target_tz = pytz.timezone(str(target_timezone).upper())
+        # Define the target timezone
+        target_tz = pytz.timezone(str(target_timezone).upper())
 
-    # Convert UTC datetime to the target timezone
-    local_datetime = utc_datetime.astimezone(target_tz)
+        # Convert UTC datetime to the target timezone
+        local_datetime = utc_datetime.astimezone(target_tz)
 
-    # Format the result as a string
-    local_timestamp = local_datetime.strftime('%Y-%m-%dT%H:%M:%S%z')
-    timestamp_modified = local_timestamp.replace('T', ' ').replace('+', ' +')
-    return timestamp_modified
+        # Format the result as a string
+        local_timestamp = local_datetime.strftime('%Y-%m-%dT%H:%M:%S%z')
+        timestamp_modified = local_timestamp.replace('T', ' ').replace('+', ' +')
+        return timestamp_modified
+    except Exception as ex:
+        logging.info(f" error in convert_utc_to_local{ex}")
 async def create_schema_if_not_exists(schema_name):
     try:
         # Create a connection string
@@ -279,7 +309,7 @@ async def create_table_if_not_exists(schema_name, table_name):
                         CREATE TABLE {schema_name}.{table_name} (
                             id INT IDENTITY(1,1) PRIMARY KEY,
                             hookid VARCHAR(255) NOT NULL,
-                            urn VARCHAR(255) NOT NULL,
+                            urn VARCHAR(255) NOT NULL UNIQUE,
                             lastmodifiedtime VARCHAR(255),
                             lastmodifieduser VARCHAR(255),
                             filename VARCHAR(255),
@@ -362,7 +392,7 @@ async def main(req: HttpRequest) -> HttpResponse:
             cursor = conn.cursor()
             # Process the data received in the callback
             data = req.get_json()  # Assuming the data is in JSON format
-            logging.info(data)
+            # logging.info(data)
         # data = {'version': '1.0', 'resourceUrn': 'urn:adsk.wipprod:fs.file:vf.ZY4iW_eER-6e8Ee5OWnREQ?version=1', 'hook': {'hookId': '1ae09bae-7fd6-4890-b09d-ac6ebc75f036', 'tenant': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw', 'callbackUrl': 'https://7097-103-214-235-230.ngrok-free.app/send_email', 'createdBy': 'Ak5xhjoOVN80nIGnGXBgWtWf1LS6GbWA', 'event': 'dm.version.added', 'createdDate': '2024-02-01T10:13:56.605+00:00', 'lastUpdatedDate': '2024-02-01T10:13:56.605+00:00', 'system': 'data', 'creatorType': 'Application', 'status': 'active', 'scope': {'folder': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw'}, 'autoReactivateHook': False, 'urn': 'urn:adsk.webhooks:events.hook:1ae09bae-7fd6-4890-b09d-ac6ebc75f036', 'callbackWithEventPayloadOnly': False, '__self__': '/systems/data/events/dm.version.added/hooks/1ae09bae-7fd6-4890-b09d-ac6ebc75f036'}, 'payload': {'ext': 'pdf', 'modifiedTime': '2024-02-01T10:15:03+0000', 'creator': 'F4R27ZLHJ3DMFDD6', 'lineageUrn': 'urn:adsk.wipprod:dm.lineage:ZY4iW_eER-6e8Ee5OWnREQ', 'sizeInBytes': 44263, 'hidden': False, 'indexable': True, 'source': 'urn:adsk.wipprod:fs.file:vf.ZY4iW_eER-6e8Ee5OWnREQ?version=1', 'version': '1', 'user_info': {'id': 'F4R27ZLHJ3DMFDD6'}, 'name': '120. AMS VS AMS.pdf', 'context': {'lineage': {'reserved': False, 'reservedUserName': None, 'reservedUserId': None, 'reservedTime': None, 'unreservedUserName': None, 'unreservedUserId': None, 'unreservedTime': None, 'createUserId': 'F4R27ZLHJ3DMFDD6', 'createTime': '2024-02-01T10:15:03+0000', 'createUserName': 'Majid N', 'lastModifiedUserId': 'F4R27ZLHJ3DMFDD6', 'lastModifiedTime': '2024-02-01T10:15:03+0000', 'lastModifiedUserName': 'Majid N'}, 'operation': 'PostVersionedFiles'}, 'createdTime': '2024-02-01T10:15:03+0000', 'modifiedBy': 'F4R27ZLHJ3DMFDD6', 'state': 'CONTENT_AVAILABLE', 'parentFolderUrn': 'urn:adsk.wipprod:fs.folder:co.kVQof2GfSGKsqf9QMDMbmw', 'ancestors': [{'name': '9a1a9f2f-235e-4dc9-b961-29f202ea15ca-account-root-folder', 'urn': 'urn:adsk.wipprod:fs.folder:co.8DhXKk-fTCuOB7lro19mDw'}, {'name': 'ace3d80e-a6e9-4707-8809-7a9d0b065e45-root-folder', 'urn': 'urn:adsk.wipprod:fs.folder:co.Bo2foW1bRzSQ-5Lu9yrWjw'}, {'name': 'Project Files', 'urn': 'urn:adsk.wipprod:fs.folder:co.JnqBvg6pTNSCMfhkMr1ezw'}, {'name': 'Test03', 'urn': 'urn:adsk.wipprod:fs.folder:co.kVQof2GfSGKsqf9QMDMbmw'}], 'project': 'ace3d80e-a6e9-4707-8809-7a9d0b065e45', 'tenant': '9a1a9f2f-235e-4dc9-b961-29f202ea15ca', 'custom-metadata': {'storm:process-state': 'NEEDS_PROCESSING', 'dm_sys_id': 'e59abf0d-3ba6-4dca-b393-b96e363ddc77', 'file_name': '120. AMS VS AMS.pdf', 'lineageTitle': '', 'dm_command:id': '8cf2e641-7884-415c-9c5f-88835c8decc8', 'forge.type': 'versions:autodesk.bim360:File-1.0', 'storm:entity-type': 'SEED_FILE', 'fileName': '120. AMS VS AMS.pdf'}}}
         # Extracting relevant information
             # logging.info(data)
@@ -375,7 +405,7 @@ async def main(req: HttpRequest) -> HttpResponse:
             weblink = await get_webview_link(project, item_id)
 
             project_name = await get_project_info(hubid, project)
-            print(project_name)
+            logging.info(project_name)
             # Creating a string mentioning the path of the folder using ancestors
             ancestors = data['payload']['ancestors']
             gfc_found = await check_for_gfc(ancestors)
