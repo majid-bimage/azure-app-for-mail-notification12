@@ -349,23 +349,48 @@ async def insert_data(schema_name, table_name, hookid, urn, lastmodifiedtime, la
     cursor.execute(query_check, (urn, lastmodifiedtime, lastmodifieduser, filename))
     row_count = cursor.fetchone()[0]
     if row_count == 0:
-        # Insert the new row
-        query = f"""
-            INSERT INTO {schema_name}.{table_name} (hookid, urn, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath, lastupdatedtime)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        query_check = f"""
+            SELECT COUNT(*)
+            FROM {schema_name}.{table_name}
+            WHERE urn = ? 
         """
+        cursor.execute(query_check, (urn))
+        row_count_urn = cursor.fetchone()[0]
 
-        # Assuming lastupdatedtime is the current datetime
-        current_datetime = datetime.now()
+        if row_count_urn != 0:
+            update_query = f"""
+                UPDATE {schema_name}.{table_name}
+                SET hookid = ?, lastmodifiedtime = ?, lastmodifieduser = ?, filename = ?, projectname = ?, projectpath = ?, lastupdatedtime = ?
+                WHERE urn = ?
+            """
 
-        # Execute the insert query with parameters
-        cursor.execute(query, (hookid, urn, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath, current_datetime))
-        conn.commit()
+            # Execute the update query with the provided data
+            cursor.execute(query, (hookid, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath, current_datetime, urn))
 
-        # Close the cursor and connection
-        cursor.close()
-        conn.close()
-        return True
+            conn.commit()
+
+            # Close the cursor and connection
+            cursor.close()
+            conn.close()
+            return True
+        else:
+            # Insert the new row
+            query = f"""
+                INSERT INTO {schema_name}.{table_name} (hookid, urn, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath, lastupdatedtime)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+
+            # Assuming lastupdatedtime is the current datetime
+            current_datetime = datetime.now()
+
+            # Execute the insert query with parameters
+            cursor.execute(query, (hookid, urn, lastmodifiedtime, lastmodifieduser, filename, projectname, projectpath, current_datetime))
+            conn.commit()
+
+            # Close the cursor and connection
+            cursor.close()
+            conn.close()
+            return True
     else:
         logging.info("Row with the same attributes already exists. Not inserting.")
         return False
